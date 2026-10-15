@@ -1,0 +1,82 @@
+name: release
+
+# Runs when a SemVer tag such as v1.4.0 or v2.0.0-rc.1 is pushed.
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  validate:
+    runs-on: linux-amd64
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        name: Validate tag is SemVer
+        run: |
+          version="$(python3 scripts/version_from_tag.py "${GITHUB_REF_NAME}")"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: validate
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          # PyInstaller cannot cross-compile: each target builds on a matching runner.
+          - { runner: linux-amd64, target: linux-amd64 }
+          - { runner: linux-arm64, target: linux-arm64 }
+          - { runner: macos-arm64, target: macos-arm64 }
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.13"
+      - name: Install dependencies
+        run: uv sync --all-groups --frozen
+      - name: Test
+        run: uv run pytest -q --cov
+      - name: Stamp version from tag
+        run: python3 scripts/version_from_tag.py "${GITHUB_REF_NAME}"
+      - name: Build single-file binary
+        run: uv run pyinstaller envbao.spec --clean --noconfirm
+      - name: Smoke test and name artifact
+        run: |
+          test "$(./dist/envbao --version)" = "envbao ${{ needs.validate.outputs.version }}"
+          mv dist/envbao "dist/envbao-${{ needs.validate.outputs.version }}-${{ matrix.target }}"
+      - uses: actions/upload-artifact@v3
+        with:
+          name: envbao-${{ matrix.target }}
+          path: dist/envbao-*
+
+  release:
+    needs: [validate, build]
+    runs-on: linux-amd64
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          path: artifacts
+      - name: Checksums
+        run: |
+          mkdir release
+          cp artifacts/*/envbao-* release/
+          (cd release && sha256sum envbao-* > SHA256SUMS)
+      - name: Publish Gitea release
+        env:
+          TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          API: ${{ github.server_url }}/api/v1/repos/${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+          VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          set -eu
+          case "$VERSION" in *-*) pre=true ;; *) pre=false ;; esac
+          id="$(curl -fsS -X POST "$API/releases" \
+            -H "Authorization: token $TOKEN" -H 'Content-Type: application/json' \
+            -d "{\"tag_name\":\"$TAG\",\"name\":\"$TAG\",\"prerelease\":$pre}" \
+            | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])')"
+          for f in release/*; do
+            curl -fsS -X POST "$API/releases/$id/assets?name=$(basename "$f")" \
+              -H "Authorization: token $TOKEN" -F "attachment=@$f" >/dev/null
+          done
