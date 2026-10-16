@@ -8,6 +8,8 @@ default.
 from __future__ import annotations
 
 import logging
+import os
+import re
 import tomllib
 from collections.abc import Mapping
 from dataclasses import dataclass, field
@@ -35,7 +37,9 @@ _SERVER_KEYS = {
 }
 _SECURITY_KEYS = {"allow_protected"}
 _TOP_KEYS = {"server", "security", "query"}
-_QUERY_COMMON_KEYS = {"engine", "keys", "prefix", "rename", "on_missing"}
+_QUERY_COMMON_KEYS = {"engine", "name", "keys", "prefix", "rename", "on_missing"}
+_NAME_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*\Z")
+CONFIG_ENV_VAR = "ENVBAO_CONFIG"
 
 
 @dataclass(frozen=True)
@@ -64,6 +68,7 @@ class Query:
     prefix: str = ""
     rename: Mapping[str, str] = field(default_factory=dict)
     on_missing: str = "warn"
+    name: str = ""
 
     def describe(self) -> str:
         """Short, secret-free description of this query for logs."""
@@ -81,9 +86,10 @@ class Config:
 
 
 def resolve_config_path(explicit: str | None) -> Path:
-    """Return the config file path: ``explicit`` if given, else ``~/.envbao/config.toml``."""
-    if explicit:
-        return Path(explicit).expanduser()
+    """Return the config path: ``explicit``, ``$ENVBAO_CONFIG`` or ``~/.envbao/config.toml``."""
+    chosen = explicit or os.environ.get(CONFIG_ENV_VAR)
+    if chosen:
+        return Path(chosen).expanduser()
     return DEFAULT_DIR.expanduser() / CONFIG_NAME
 
 
@@ -163,26 +169,37 @@ def _parse_server(raw: Mapping[str, Any]) -> ServerConfig:
     )
 
 
-def _parse_query(raw: Any, index: int) -> Query:
-    name = f"query #{index + 1}"
-    if not isinstance(raw, dict):
-        raise ConfigError(f"{name} must be a table")
+def _default_name(engine: str, options: Mapping[str, Any]) -> str:
+    """Name used by ``envbao exec -q``: last path segment (e.g. ``shell/gitea`` -> ``gitea``)."""
+    path = options.get("path")
+    if isinstance(path, str) and path.strip("/"):
+        return path.strip("/").rsplit("/", 1)[-1]
+    return engine
 
-    engine = _get_str(raw, "engine", name) or "kv"
-    keys = _get_str_list(raw, "keys", name)
-    prefix = _get_str(raw, "prefix", name) or ""
+
+def _parse_query(raw: Any, index: int) -> Query:
+    name_label = f"query #{index + 1}"
+    if not isinstance(raw, dict):
+        raise ConfigError(f"{name_label} must be a table")
+
+    engine = _get_str(raw, "engine", name_label) or "kv"
+    keys = _get_str_list(raw, "keys", name_label)
+    prefix = _get_str(raw, "prefix", name_label) or ""
 
     rename = raw.get("rename", {})
     if not isinstance(rename, dict) or not all(
         isinstance(k, str) and isinstance(v, str) for k, v in rename.items()
     ):
-        raise ConfigError(f"{name}.rename must be a table of string to string")
+        raise ConfigError(f"{name_label}.rename must be a table of string to string")
 
-    on_missing = _get_str(raw, "on_missing", name) or "warn"
+    on_missing = _get_str(raw, "on_missing", name_label) or "warn"
     if on_missing not in ON_MISSING_CHOICES:
-        raise ConfigError(f"{name}.on_missing must be one of {', '.join(ON_MISSING_CHOICES)}")
+        raise ConfigError(f"{name_label}.on_missing must be one of {', '.join(ON_MISSING_CHOICES)}")
 
     options = {k: v for k, v in raw.items() if k not in _QUERY_COMMON_KEYS}
+    name = _get_str(raw, "name", name_label) or _default_name(engine, options)
+    if not _NAME_RE.match(name):
+        raise ConfigError(f"{name_label}.name {name!r} may only contain letters, digits, . _ -")
     return Query(
         engine=engine,
         options=options,
@@ -190,6 +207,7 @@ def _parse_query(raw: Any, index: int) -> Query:
         prefix=prefix,
         rename=dict(rename),
         on_missing=on_missing,
+        name=name,
     )
 
 

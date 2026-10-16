@@ -16,10 +16,11 @@ from pathlib import Path
 
 from envbao.client import BaoClient
 from envbao.config import Config, load_config, resolve_config_path
-from envbao.errors import EXIT_FAILURE, EXIT_OK, EnvBaoError, PermissionPolicyError
+from envbao.errors import EXIT_FAILURE, EXIT_OK, ConfigError, EnvBaoError, PermissionPolicyError
 from envbao.logging_setup import add_file_logging, setup_stderr_logging
 from envbao.render import SHELLS, detect_shell, render
 from envbao.resolve import resolve, validate_queries
+from envbao.runner import fetch_secrets, run_command, select_queries
 from envbao.security import check_config_dir
 from envbao.version import get_version
 
@@ -86,6 +87,29 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("-v", "--verbose", action="count", default=0, help="log more to stderr")
     parser.add_argument("--version", action=_VersionAction)
+
+    sub = parser.add_subparsers(dest="command", metavar="{exec}")
+    run_p = sub.add_parser(
+        "exec",
+        help="run a command with selected secret groups in its environment",
+        description="Fetch the named groups and run COMMAND with them as environment variables. "
+        "Output is filtered so secret values are shown as ***.",
+        usage="envbao [options] exec -q GROUP [-q GROUP ...] [--no-redact] -- COMMAND [ARGS ...]",
+    )
+    run_p.add_argument(
+        "-q",
+        "--query",
+        action="append",
+        default=[],
+        metavar="GROUP",
+        help="group name (repeatable)",
+    )
+    run_p.add_argument(
+        "--no-redact",
+        action="store_true",
+        help="replace this process with COMMAND (no output filtering; for interactive use)",
+    )
+    run_p.add_argument("argv", nargs=argparse.REMAINDER, metavar="-- COMMAND [ARGS ...]")
     return parser
 
 
@@ -112,6 +136,8 @@ def run(args: argparse.Namespace) -> int:
     """Execute the requested action and return the exit status."""
     path = resolve_config_path(args.config)
 
+    if args.command == "exec" and (args.check or args.init):
+        raise ConfigError("--check/--init cannot be combined with exec")
     if args.init:
         try:
             init_config(path)
@@ -132,6 +158,13 @@ def run(args: argparse.Namespace) -> int:
     if args.check:
         _check(config, client)
         return EXIT_OK
+
+    if args.command == "exec":
+        argv = args.argv[1:] if args.argv[:1] == ["--"] else args.argv
+        queries = select_queries(config, args.query)
+        secrets = fetch_secrets(client, config, queries)
+        log.info("exec: groups %s", ", ".join(q.name for q in queries))
+        return run_command(argv, secrets, redact=not args.no_redact)
 
     env = resolve(client, config)
     shell = detect_shell() if args.shell == "auto" else args.shell
