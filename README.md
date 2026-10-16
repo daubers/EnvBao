@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/logo.svg" alt="EnvBao logo: a steamed bun with a terminal prompt face" width="128"></p>
+
 # EnvBao
 
 [![Licence: BSD-3-Clause](https://img.shields.io/badge/licence-BSD--3--Clause-blue.svg)](LICENSE)
