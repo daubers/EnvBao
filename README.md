@@ -85,6 +85,7 @@ Full reference: [docs/configuration.md](docs/configuration.md).
 - [Usage](docs/usage.md)
 - [Configuration reference](docs/configuration.md)
 - [Security model](docs/security.md)
+- [Migrating from ~/.zshrc](docs/migration.md)
 - [Development](docs/development.md)
 - [Releasing and CI](docs/releasing.md)
 - [Plans](docs/plans/)
