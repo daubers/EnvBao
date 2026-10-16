@@ -28,12 +28,21 @@ safely quoted `export` statements for your shell to evaluate.
 ## Install
 
 Download the binary for your platform from the project's releases page
-(`envbao-<version>-linux-amd64`, `-linux-arm64`, `-macos-arm64`), verify it against `SHA256SUMS`,
-then:
+(`envbao-<version>-linux-amd64`, `-linux-arm64`, `-macos-arm64`) along with `SHA256SUMS`.
+EnvBao is a single self-contained file: there is no installer and nothing to symlink. Verify
+it, then copy it onto your `PATH` (`~/.local/bin` shown):
 
 ```sh
-chmod +x envbao-*; mv envbao-* ~/.local/bin/envbao
+shasum -a 256 -c SHA256SUMS --ignore-missing     # Linux: sha256sum -c SHA256SUMS --ignore-missing
+# macOS, only if downloaded through a browser (clears the quarantine flag):
+xattr -d com.apple.quarantine envbao-*-macos-arm64
+install -m 755 envbao-<version>-<platform> ~/.local/bin/envbao
+envbao --version
 ```
+
+`install` copies the file and sets its mode in one step. Make sure `~/.local/bin` is on your
+`PATH`. To track a local build instead of copying, symlink it:
+`ln -s "$PWD/dist/envbao" ~/.local/bin/envbao`.
 
 Or run from source: `uv sync && uv run envbao --help`.
 
