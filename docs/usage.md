@@ -2,6 +2,7 @@
 
 ```
 envbao [--config PATH] [--shell {auto,bash,zsh,sh,fish}] [-v|-vv] [--check | --init]
+envbao [options] exec -q GROUP [-q GROUP ...] [--no-redact] -- COMMAND [ARGS ...]
 envbao --version
 ```
 
@@ -13,6 +14,18 @@ envbao --version
 | `--check` | Validate permissions, config and token (via `auth/token/lookup-self`). Prints nothing to stdout. |
 | `--init` | Create `~/.envbao` (0700) and a template `config.toml` (0600). Never overwrites. |
 | `-v` / `-vv` | Show INFO / DEBUG messages on stderr. |
+
+## `exec`: run a command with secrets
+
+```sh
+envbao exec -q gitea -q youtrack -- ./script.sh
+```
+
+Fetches only the named groups (see `name` in the configuration reference), runs `COMMAND` with
+them as environment variables, and returns the command's exit status. Its stdout/stderr are filtered
+so secret values appear as `***`; `--no-redact` replaces the process with the command instead (not
+available when `exec_only` is set). Nothing runs if any selected group cannot be fetched. See
+[claude-access.md](claude-access.md).
 
 ## Shell integration
 

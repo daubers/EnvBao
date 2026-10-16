@@ -322,3 +322,26 @@ def test_audit_log_has_no_values_or_args(exec_cfg: Path) -> None:
     text = (exec_cfg.parent / "envbao.log").read_text()
     assert "groups gitea" in text and "python" in text.lower()
     assert SECRET not in text and "--flag-arg" not in text
+
+
+# ---- security.exec_only ---------------------------------------------------------------
+
+
+def test_exec_only_blocks_plain_export_and_no_redact(
+    exec_cfg: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    exec_cfg.write_text(exec_cfg.read_text() + "\n[security]\nexec_only = true\n")
+    assert main(["--config", str(exec_cfg)]) == EXIT_CONFIG
+    assert "only permits" in capsys.readouterr().err
+    argv = ["--config", str(exec_cfg), "exec", "-q", "gitea", "--no-redact", "--", "true"]
+    assert main(argv) == EXIT_CONFIG
+    assert main(["--config", str(exec_cfg), "--check"]) == 0
+    ok = ["--config", str(exec_cfg), "exec", "-q", "gitea", "--", sys.executable, "-c", "pass"]
+    assert main(ok) == 0
+
+
+def test_exec_only_must_be_bool() -> None:
+    with pytest.raises(ConfigError, match="exec_only"):
+        parse_config(
+            {"server": {"address": "https://b", "token": "t"}, "security": {"exec_only": "yes"}}
+        )

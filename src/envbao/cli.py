@@ -159,7 +159,11 @@ def run(args: argparse.Namespace) -> int:
         _check(config, client)
         return EXIT_OK
 
+    if config.exec_only and args.command != "exec" and not args.check:
+        raise ConfigError("this configuration only permits 'envbao exec' (security.exec_only)")
     if args.command == "exec":
+        if config.exec_only and args.no_redact:
+            raise ConfigError("--no-redact is not permitted (security.exec_only)")
         argv = args.argv[1:] if args.argv[:1] == ["--"] else args.argv
         queries = select_queries(config, args.query)
         secrets = fetch_secrets(client, config, queries)

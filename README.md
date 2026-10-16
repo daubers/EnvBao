@@ -24,27 +24,30 @@ safely quoted `export` statements for your shell to evaluate.
   log. Tokens and secret values are never logged.
 - **Single binary**, no runtime dependencies (built with PyInstaller).
 - bash, zsh, sh and fish output.
+- `envbao exec`: run a command with chosen secret groups, output redacted (see [docs/claude-access.md](docs/claude-access.md)).
 
 ## Install
 
-Download the binary for your platform from the project's releases page
-(`envbao-<version>-linux-amd64`, `-linux-arm64`, `-macos-arm64`) along with `SHA256SUMS`.
-EnvBao is a single self-contained file: there is no installer and nothing to symlink. Verify
-it, then copy it onto your `PATH` (`~/.local/bin` shown):
+Download the package for your platform from the project's releases page, together with
+`SHA256SUMS`, and verify it (`shasum -a 256 -c SHA256SUMS --ignore-missing`, or `sha256sum -c`
+on Linux). The packages install the application and create the `envbao` command for you:
 
-```sh
-shasum -a 256 -c SHA256SUMS --ignore-missing     # Linux: sha256sum -c SHA256SUMS --ignore-missing
-# macOS, only if downloaded through a browser (clears the quarantine flag):
-xattr -d com.apple.quarantine envbao-*-macos-arm64
-install -m 755 envbao-<version>-<platform> ~/.local/bin/envbao
-envbao --version
-```
+| Platform | Asset | Install |
+|----------|-------|---------|
+| macOS (Apple Silicon) | `envbao-<version>-macos-arm64.pkg` | `sudo installer -pkg envbao-<version>-macos-arm64.pkg -target /` |
+| Debian / Ubuntu (x86-64) | `envbao_<version>_amd64.deb` | `sudo dpkg -i envbao_<version>_amd64.deb` |
+| Debian / Ubuntu / Raspberry Pi OS (64-bit ARM) | `envbao_<version>_arm64.deb` | `sudo dpkg -i envbao_<version>_arm64.deb` |
+| Any other / no root | `envbao-<version>-<target>.tar.gz` | `scripts/install.sh envbao-<version>-<target>.tar.gz` |
 
-`install` copies the file and sets its mode in one step. Make sure `~/.local/bin` is on your
-`PATH`. To track a local build instead of copying, symlink it:
-`ln -s "$PWD/dist/envbao" ~/.local/bin/envbao`.
+* The `.pkg` is unsigned: using `installer` on the command line avoids the Gatekeeper prompt.
+  Uninstall with `scripts/packaging/uninstall-macos.sh`.
+* The `.deb` installs to `/opt/envbao` with `/usr/bin/envbao`; remove with `sudo apt remove envbao`.
+  32-bit Raspberry Pi OS (armhf) is not supported.
+* `scripts/install.sh` verifies the checksum, unpacks to `~/.local/lib/envbao` and links
+  `~/.local/bin/envbao`. Make sure `~/.local/bin` is on your `PATH`.
+* Linux packages need glibc 2.31 or newer.
 
-Or run from source: `uv sync && uv run envbao --help`.
+Check with `envbao --version`. Or run from source: `uv sync && uv run envbao --help`.
 
 ## Quick start
 
@@ -111,6 +114,7 @@ Full reference: [docs/configuration.md](docs/configuration.md).
 - [Usage](docs/usage.md)
 - [Configuration reference](docs/configuration.md)
 - [Security model](docs/security.md)
+- [Using EnvBao from Claude Code](docs/claude-access.md)
 - [Migrating from ~/.zshrc](docs/migration.md)
 - [Development](docs/development.md)
 - [Releasing and CI](docs/releasing.md)

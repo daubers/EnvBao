@@ -1,6 +1,6 @@
 # Configuration reference
 
-File: `~/.envbao/config.toml`. Unknown keys and wrong types are rejected, so typos fail loudly.
+File: `~/.envbao/config.toml`, or the path in `--config` / the `ENVBAO_CONFIG` environment variable (the flag wins). Unknown keys and wrong types are rejected, so typos fail loudly.
 
 ## `[server]`
 
@@ -19,6 +19,7 @@ File: `~/.envbao/config.toml`. Unknown keys and wrong types are rejected, so typ
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | `allow_protected` | list of strings | `[]` | Protected variable names (see [security.md](security.md)) that secrets may set, e.g. `["PATH"]`. |
+| `exec_only` | bool | `false` | Refuse plain `envbao` (which prints every value) and `exec --no-redact`; only redacted `envbao exec` and `--check` work. Used by the Claude profile. |
 
 ## `[[query]]`
 
@@ -29,6 +30,7 @@ Common keys:
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | `engine` | string | `"kv"` | Secret engine. Currently only `kv`. |
+| `name` | string | last `path` segment | Group name for `envbao exec -q NAME` (letters, digits, `.` `_` `-`). |
 | `keys` | list of strings | all | Only export these keys from the secret. |
 | `rename` | table | `{}` | Map secret key → variable name. Applied before `prefix`. |
 | `prefix` | string | `""` | Prepended to every variable name. |

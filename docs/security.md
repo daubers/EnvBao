@@ -31,12 +31,18 @@ variables are exported (any child process inherits them).
    syslog for WARNING and above. Events: permission violations, auth failures, per-query outcome,
    overrides, refused variables, count of exported variables.
 
+8. **`exec` mode** - `envbao exec` injects only the requested groups into one child process and masks
+   their values (raw, JSON, URL-encoded) in its output; with `[security] exec_only = true` plain
+   export mode and `--no-redact` are refused. Masking is defence in depth, not a sandbox (see
+   [claude-access.md](claude-access.md)).
+
 ## Recommendations
 
 - Use a token with a narrow read-only policy and a TTL; renew it periodically.
 - Prefer `token_file` if you want to rotate the token without editing the config.
 - Keep `~/.envbao` out of backups/sync tools that change permissions.
-- Verify release binaries against `SHA256SUMS`.
+- Verify release packages against `SHA256SUMS`.
+- Do not keep a root/admin `BAO_TOKEN` exported in your shell profile.
 
 ## Reporting a vulnerability
 

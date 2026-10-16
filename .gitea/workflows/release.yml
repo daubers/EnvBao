@@ -25,10 +25,12 @@ jobs:
       matrix:
         include:
           # PyInstaller cannot cross-compile: each target builds on a matching runner.
-          - { runner: linux-amd64, target: linux-amd64 }
-          - { runner: linux-arm64, target: linux-arm64 }
-          - { runner: macos-arm64, target: macos-arm64 }
+          - { runner: linux-amd64, target: linux-amd64, deb_arch: amd64 }
+          - { runner: linux-arm64, target: linux-arm64, deb_arch: arm64 }
+          - { runner: macos-arm64, target: macos-arm64, deb_arch: "" }
     runs-on: ${{ matrix.runner }}
+    env:
+      VERSION: ${{ needs.validate.outputs.version }}
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
@@ -40,16 +42,24 @@ jobs:
         run: uv run pytest -q --cov
       - name: Stamp version from tag
         run: python3 scripts/version_from_tag.py "${GITHUB_REF_NAME}"
-      - name: Build single-file binary
+      - name: Build one-dir application
         run: uv run pyinstaller envbao.spec --clean --noconfirm
-      - name: Smoke test and name artifact
+      - name: Smoke test
+        run: test "$(./dist/envbao/envbao --version)" = "envbao ${VERSION}"
+      - name: Package
         run: |
-          test "$(./dist/envbao --version)" = "envbao ${{ needs.validate.outputs.version }}"
-          mv dist/envbao "dist/envbao-${{ needs.validate.outputs.version }}-${{ matrix.target }}"
+          mkdir -p out
+          tar -C dist -czf "out/envbao-${VERSION}-${{ matrix.target }}.tar.gz" envbao
+          if [ -n "${{ matrix.deb_arch }}" ]; then
+            python3 scripts/packaging/build_deb.py "${VERSION}" "${{ matrix.deb_arch }}" dist out
+          else
+            sh scripts/packaging/build_pkg.sh "${VERSION}" dist out
+          fi
+          ls -l out
       - uses: actions/upload-artifact@v3
         with:
           name: envbao-${{ matrix.target }}
-          path: dist/envbao-*
+          path: out/*
 
   release:
     needs: [validate, build]
@@ -61,8 +71,8 @@ jobs:
       - name: Checksums
         run: |
           mkdir release
-          cp artifacts/*/envbao-* release/
-          (cd release && sha256sum envbao-* > SHA256SUMS)
+          cp artifacts/*/* release/
+          (cd release && sha256sum * > SHA256SUMS)
       - name: Publish Gitea release
         env:
           TOKEN: ${{ secrets.RELEASE_TOKEN }}

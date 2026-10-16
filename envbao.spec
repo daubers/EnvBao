@@ -1,5 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
-# PyInstaller spec: builds a single self-contained executable at dist/envbao.
+# PyInstaller spec: builds a one-directory application at dist/envbao/ (run dist/envbao/envbao).
+# One-dir starts much faster than one-file because nothing is unpacked on every run.
 # Usage: uv run pyinstaller envbao.spec --clean --noconfirm
 a = Analysis(
     ["src/envbao/__main__.py"],
@@ -14,13 +15,19 @@ pyz = PYZ(a.pure)
 exe = EXE(
     pyz,
     a.scripts,
-    a.binaries,
-    a.datas,
     [],
+    exclude_binaries=True,
     name="envbao",
     debug=False,
     strip=False,
     upx=False,
     console=True,
-    runtime_tmpdir=None,
+)
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.datas,
+    strip=False,
+    upx=False,
+    name="envbao",
 )

@@ -27,4 +27,5 @@ jobs:
       - name: Build smoke test
         run: |
           uv run pyinstaller envbao.spec --clean --noconfirm
-          ./dist/envbao --version
+          ./dist/envbao/envbao --version
+          python3 scripts/packaging/build_deb.py 0.0.0 amd64 dist out

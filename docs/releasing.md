@@ -6,10 +6,13 @@
   90 % coverage gate, and a PyInstaller build smoke test.
 - **`release.yml`** - on a pushed tag `vMAJOR.MINOR.PATCH[-prerelease][+build]` ([SemVer 2.0.0](https://semver.org)):
   1. `validate` rejects tags that are not valid SemVer (`scripts/version_from_tag.py`).
-  2. `build` runs tests then builds `envbao` with PyInstaller on each runner, stamping the version
-     from the tag into the binary and checking `envbao --version` matches.
-  3. `release` writes `SHA256SUMS` and creates a Gitea release (marked *prerelease* if the tag has a
-     `-suffix`) with all binaries attached.
+  2. `build` runs tests then builds the one-directory `envbao` app with PyInstaller on each runner,
+     stamping the version from the tag and checking `envbao --version` matches. It then packages it:
+     `envbao-<ver>-<target>.tar.gz` everywhere, plus `envbao_<ver>_<arch>.deb` (linux, built in pure
+     Python by `scripts/packaging/build_deb.py`) or `envbao-<ver>-macos-arm64.pkg` (macOS, via
+     `pkgbuild` in `scripts/packaging/build_pkg.sh`).
+  3. `release` writes one `SHA256SUMS` and creates a Gitea release (marked *prerelease* if the tag
+     has a `-suffix`) with all packages attached.
 
 ## Cutting a release
 
@@ -41,7 +44,8 @@ Runners need network access to fetch `astral-sh/setup-uv` and Python packages.
 ## Notes
 
 - `actions/upload-artifact@v3` / `download-artifact@v3` are used because Gitea does not yet support v4.
-- Linux binaries link against the glibc of the build host; build on the oldest distro you want to
-  support.
-- macOS binaries are unsigned; first run may need `xattr -d com.apple.quarantine envbao` if downloaded
-  through a browser.
+- Linux builds link against the glibc of the build host, and the `.deb` declares `libc6 (>= 2.31)`:
+  keep the Linux runners on Debian 11 / Ubuntu 20.04 or newer, ideally the oldest you want to
+  support. Pre-release tags map to Debian `~` versions (`1.0.0-rc.1` → `1.0.0~rc.1`).
+- Raspberry Pi OS 64-bit is covered by the arm64 `.deb`; 32-bit (armhf) would need an armv7 runner.
+- The macOS `.pkg` is unsigned and not notarised; install with `sudo installer -pkg … -target /`.

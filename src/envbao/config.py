@@ -35,7 +35,7 @@ _SERVER_KEYS = {
     "timeout",
     "allow_insecure_http",
 }
-_SECURITY_KEYS = {"allow_protected"}
+_SECURITY_KEYS = {"allow_protected", "exec_only"}
 _TOP_KEYS = {"server", "security", "query"}
 _QUERY_COMMON_KEYS = {"engine", "name", "keys", "prefix", "rename", "on_missing"}
 _NAME_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*\Z")
@@ -83,6 +83,7 @@ class Config:
     server: ServerConfig
     queries: tuple[Query, ...]
     allow_protected: frozenset[str] = frozenset()
+    exec_only: bool = False
 
 
 def resolve_config_path(explicit: str | None) -> Path:
@@ -227,7 +228,16 @@ def parse_config(data: Mapping[str, Any]) -> Config:
     _reject_unknown(security, _SECURITY_KEYS, "[security]")
     allow_protected = _get_str_list(security, "allow_protected", "security") or []
 
-    return Config(server=server, queries=queries, allow_protected=frozenset(allow_protected))
+    exec_only = security.get("exec_only", False)
+    if not isinstance(exec_only, bool):
+        raise ConfigError("security.exec_only must be a boolean")
+
+    return Config(
+        server=server,
+        queries=queries,
+        allow_protected=frozenset(allow_protected),
+        exec_only=exec_only,
+    )
 
 
 def load_config(path: Path) -> Config:

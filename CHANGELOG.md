@@ -4,7 +4,16 @@ All notable changes are documented here. This project follows [Semantic Versioni
 
 ## [Unreleased]
 
+### Added (exec and packaging)
+- `envbao exec -q GROUP -- COMMAND`: run a command with chosen secret groups, output redacted;
+  `name` on queries, `ENVBAO_CONFIG`, `[security] exec_only`.
+- `scripts/setup_claude_access.py`: narrow policy/token and restricted config for Claude Code
+  (`docs/claude-access.md`).
+- Native packages: macOS `.pkg`, Debian/Ubuntu/Raspberry Pi OS `.deb` (amd64, arm64) and a generic
+  tarball with `scripts/install.sh`.
+
 ### Changed
+- Release builds are now one-directory apps (about 0.06 s start-up instead of ~1.4 s).
 - `--version` from a source checkout now reports a git-derived version such as
   `0.1.0.dev3+g19a5373` instead of `0.0.0.dev0`. Release binaries are unchanged.
 
