@@ -6,9 +6,9 @@ from pathlib import Path
 
 import pytest
 
-from envbao import __version__
 from envbao.cli import init_config, main
 from envbao.errors import EXIT_AUTH, EXIT_CONFIG, EXIT_FAILURE, EXIT_OK, EXIT_UNAVAILABLE
+from envbao.version import get_version
 
 from .conftest import TOKEN, FakeBao, write_config
 
@@ -171,7 +171,7 @@ def test_version(capsys: pytest.CaptureFixture[str]) -> None:
     with pytest.raises(SystemExit) as exc:
         main(["--version"])
     assert exc.value.code == 0
-    assert __version__ in capsys.readouterr().out
+    assert get_version() in capsys.readouterr().out
 
 
 # ---- init -----------------------------------------------------------------------------
@@ -221,4 +221,4 @@ def test_python_dash_m(tmp_path: Path) -> None:
         check=True,
         env={**os.environ},
     )
-    assert __version__ in result.stdout
+    assert get_version() in result.stdout

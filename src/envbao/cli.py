@@ -14,7 +14,6 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-from envbao import __version__
 from envbao.client import BaoClient
 from envbao.config import Config, load_config, resolve_config_path
 from envbao.errors import EXIT_FAILURE, EXIT_OK, EnvBaoError, PermissionPolicyError
@@ -22,6 +21,7 @@ from envbao.logging_setup import add_file_logging, setup_stderr_logging
 from envbao.render import SHELLS, detect_shell, render
 from envbao.resolve import resolve, validate_queries
 from envbao.security import check_config_dir
+from envbao.version import get_version
 
 log = logging.getLogger("envbao")
 
@@ -44,6 +44,17 @@ path = "myapp/prod"
 # rename = { DB_URL = "DATABASE_URL" }
 # on_missing = "warn"   # or "error"
 """
+
+
+class _VersionAction(argparse.Action):
+    """``--version`` that resolves the version lazily (git is never run otherwise)."""
+
+    def __init__(self, option_strings: Sequence[str], dest: str, **kwargs: object) -> None:
+        super().__init__(option_strings, dest, nargs=0, help="show version and exit")
+
+    def __call__(self, parser: argparse.ArgumentParser, *args: object, **kwargs: object) -> None:
+        sys.stdout.write(f"envbao {get_version()}\n")
+        parser.exit()
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -74,7 +85,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="create ~/.envbao with safe permissions and a template config.toml",
     )
     parser.add_argument("-v", "--verbose", action="count", default=0, help="log more to stderr")
-    parser.add_argument("--version", action="version", version=f"envbao {__version__}")
+    parser.add_argument("--version", action=_VersionAction)
     return parser
 
 
