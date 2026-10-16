@@ -60,6 +60,23 @@ Add to `~/.zshrc` or `~/.bashrc`:
 command -v envbao >/dev/null && eval "$(envbao)"
 ```
 
+> **Caveat: `PATH` must already include `envbao` where this line runs.** The guard
+> `command -v envbao` is evaluated at that point in the file. If `~/.local/bin` (or wherever you
+> installed the binary) is only added to `PATH` *later* in your `.zshrc` / `.bashrc` (a common
+> case with Oh My Zsh, nvm or pyenv snippets), the guard fails and the line is **silently
+> skipped**: no variables are loaded, yet running `eval "$(envbao)"` by hand later works.
+>
+> Either put the line *after* your last `PATH` change, or avoid the dependency by using the
+> full path:
+>
+> ```sh
+> [ -x "$HOME/.local/bin/envbao" ] && eval "$("$HOME/.local/bin/envbao")"
+> ```
+>
+> To debug, open a new shell and run `command -v envbao`; if it prints nothing, `PATH` is the
+> problem. Remember that a failing `envbao` also prints nothing to stdout by design, so check
+> stderr and `~/.envbao/envbao.log` for the reason.
+
 ### Example `~/.envbao/config.toml`
 
 ```toml
