@@ -4,6 +4,8 @@ All notable changes are documented here. This project follows [Semantic Versioni
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-16
+
 ### Added (exec and packaging)
 - `envbao exec -q GROUP -- COMMAND`: run a command with chosen secret groups, output redacted;
   `name` on queries, `ENVBAO_CONFIG`, `[security] exec_only`.
@@ -16,6 +18,8 @@ All notable changes are documented here. This project follows [Semantic Versioni
 - Release builds are now one-directory apps (about 0.06 s start-up instead of ~1.4 s).
 - `--version` from a source checkout now reports a git-derived version such as
   `0.1.0.dev3+g19a5373` instead of `0.0.0.dev0`. Release binaries are unchanged.
+
+## [0.1.0]
 
 ### Added
 - `scripts/migrate_zshrc.py`: one-off migration of zshrc exports into OpenBao KV (`env/shell/<group>`),
